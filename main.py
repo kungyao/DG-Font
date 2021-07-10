@@ -30,7 +30,9 @@ from tools.ops import initialize_queue
 from tensorboardX import SummaryWriter
 
 # command
-# python main.py --img_size 64 --data_path ../save_folder --epochs 5 --iters 500 --output_k 27 --batch_size 16 --val_num 5
+# python main.py --img_size 64 --data_path ../save_folder --epochs 20 --iters 500 --output_k 27 --batch_size 16 --val_num 10
+# keep train
+# python main.py --img_size 64 --data_path ../save_folder --epochs 40 --iters 500 --output_k 27 --batch_size 16 --val_num 10 --load_model 
 #
 # python main.py --img_size 64 --data_path ../save_folder --output_k 27 --batch_size 16 --validation --val_num 5 --load_model 
 #
@@ -48,6 +50,7 @@ parser.add_argument('--model_name', type=str, default='GAN',
 parser.add_argument('--epochs', default=250, type=int, help='Total number of epochs to run. Not actual epoch.')
 parser.add_argument('--iters', default=1000, type=int, help='Total number of iterations per epoch')
 parser.add_argument('--batch_size', default=32, type=int, help='Batch size for training')
+# val_num ''must >='' val_batch.
 parser.add_argument('--val_num', default=190, type=int,help='Number of test images for each style')
 parser.add_argument('--val_batch', default=10, type=int,
                     help='Batch size for validation. '

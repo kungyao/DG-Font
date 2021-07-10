@@ -73,6 +73,16 @@ def validateUN(data_loader, networks, epoch, args, additional=None):
                     rnd_idx = torch.randperm(x_each_cls[ref_idx].size(0))[:args.val_batch]
                     x_ref_rnd = x_each_cls[ref_idx][rnd_idx].cuda(args.gpu, non_blocking=True)
                     for sample_idx in range(args.val_batch):
+                        # todo : 
+                        # If length >= len(list) in doing list[:length], it will return len(list) items.
+                        # If val_num < val_batch, repeat here will still create a list with size val_batch.
+                        # 
+                        # Let len(x_src) == val_num, and val_batch > val_num.
+                        # len(x_src[:val_batch]) == val_num.
+                        # len(x_ref[0].repeat(val_batch)) == val_batch.
+                        # val_num != val_batch
+                        # So, G_EMA.decode get error.
+                        # 
                         x_ref_tmp = x_ref[sample_idx: sample_idx + 1].repeat((args.val_batch, 1, 1, 1))
     
                         c_src, skip1, skip2 = G_EMA.cnt_encoder(x_src)
