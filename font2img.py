@@ -1,7 +1,7 @@
 from PIL import Image,ImageDraw,ImageFont
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 import os
-import numpy as np
+# import numpy as np
 import pathlib
 import argparse
 
@@ -37,8 +37,17 @@ data_dir = args.ttf_path
 data_root = pathlib.Path(data_dir)
 print(data_root)
 
-all_image_paths = list(data_root.glob('*.ttf*'))
-all_image_paths = [str(path) for path in all_image_paths]
+def collect_font_path(extension=['otf', 'ttf', 'TTF']):
+    paths = []
+    for ext in extension:
+        tmp_paths = list(data_root.glob(f'*.{ext}*'))
+        for path in tmp_paths:
+            paths.append(str(path))
+    return paths
+
+# all_image_paths = list(data_root.glob('*.ttf*'))
+# all_image_paths = [str(path) for path in all_image_paths]
+all_image_paths = collect_font_path(extension=['otf', 'ttf', 'TTF'])
 print(len(all_image_paths))
 for i in range (len(all_image_paths)):
     print(all_image_paths[i])
