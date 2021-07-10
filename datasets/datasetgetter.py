@@ -2,7 +2,11 @@ import torch
 from torchvision.datasets import ImageFolder
 import os
 import torchvision.transforms as transforms
-from datasets.custom_dataset import ImageFolerRemap, CrossdomainFolder
+
+try:
+    from datasets.custom_dataset import ImageFolerRemap, CrossdomainFolder
+except ImportError:
+    from custom_dataset import ImageFolerRemap, CrossdomainFolder
 
 class Compose(object):
     def __init__(self, tf):
