@@ -81,6 +81,8 @@ def get_dataset(args):
     args.max_data = max_data
     print("MINIMUM DATA :", args.min_data)
     print("MAXIMUM DATA :", args.max_data)
+    print("train_dataset :", len(train_dataset))
+    print("val_dataset :", len(val_dataset))
 
     train_dataset = {'TRAIN': train_dataset, 'FULL': dataset}
 

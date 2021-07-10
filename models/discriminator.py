@@ -20,7 +20,9 @@ class Discriminator(nn.Module):
         blocks = []
         blocks += [nn.Conv2d(3, dim_in, 3, 1, 1)]
 
+        # make sure after do operation to image, the output will be (batch, num_domains)
         repeat_num = int(np.log2(image_size)) - 2
+        print(repeat_num)
         for _ in range(repeat_num):
             dim_out = min(dim_in*2, max_conv_dim)
             blocks += [ActFirstResBlk(dim_in, dim_in, downsample=False)]
@@ -33,6 +35,11 @@ class Discriminator(nn.Module):
         blocks += [nn.Conv2d(dim_out, num_domains, 1, 1, 0)]
         self.main = nn.Sequential(*blocks)
 
+        # self.n1 = nn.LeakyReLU(0.2)
+        # self.n2 = nn.Conv2d(dim_out, dim_out, 4, 1, 0)
+        # self.n3 = nn.LeakyReLU(0.2)
+        # self.n4 = nn.Conv2d(dim_out, num_domains, 1, 1, 0)
+
         self.apply(weights_init('kaiming'))
 
     def forward(self, x, y):
@@ -44,6 +51,18 @@ class Discriminator(nn.Module):
             - out: logits of shape (batch).
         """
         out = self.main(x)
+        # print("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")
+        # print(x.shape)
+        # print(out.shape)
+        # out = self.n1(out)
+        # print(out.shape)
+        # out = self.n2(out)
+        # print(out.shape)
+        # out = self.n3(out)
+        # print(out.shape)
+        # out = self.n4(out)
+        # print(out.shape)
+
         feat = out
         out = out.view(out.size(0), -1)                          # (batch, num_domains)
         idx = torch.LongTensor(range(y.size(0))).to(y.device)
