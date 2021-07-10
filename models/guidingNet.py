@@ -1,10 +1,10 @@
 from torch import nn
 import torch.nn.functional as F
 
-try:
-    from models.blocks import Conv2dBlock, FRN
-except:
-    from blocks import Conv2dBlock, FRN
+# try:
+#     from models.blocks import Conv2dBlock, FRN
+# except:
+#     from blocks import Conv2dBlock, FRN
 
 
 cfg = {

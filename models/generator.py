@@ -1,10 +1,10 @@
 from torch import nn
 import torch
-import torch.nn.functional as F
+# import torch.nn.functional as F
 import torch.nn.init as init
-import scipy.io as io
+# import scipy.io as io
 import math
-import numpy as np
+# import numpy as np
 
 try:
     from models.blocks import LinearBlock, Conv2dBlock, ResBlocks
@@ -13,7 +13,7 @@ except:
 
 import sys
 sys.path.append('..')
-from modules import modulated_deform_conv  
+# from modules import modulated_deform_conv
 
 class Generator(nn.Module):   
     def __init__(self, img_size=80, sty_dim=64, n_res=2, use_sn=False):
@@ -78,8 +78,10 @@ class Decoder(nn.Module):
 
         self.model.append(Conv2dBlock(2*nf, 3, 7, 1, 3, norm='none', act='tanh', pad_type=pad, use_sn=use_sn))
         self.model = nn.Sequential(*self.model)
-        self.dcn = modulated_deform_conv.ModulatedDeformConvPack(64, 64, kernel_size=(3, 3), stride=1, padding=1, groups=1, deformable_groups=1, double=True).cuda()
-        self.dcn_2 = modulated_deform_conv.ModulatedDeformConvPack(128, 128, kernel_size=(3, 3), stride=1, padding=1, groups=1, deformable_groups=1, double=True).cuda()
+        # self.dcn = modulated_deform_conv.ModulatedDeformConvPack(64, 64, kernel_size=(3, 3), stride=1, padding=1, groups=1, deformable_groups=1, double=True).cuda()
+        self.conv1 = Conv2dBlock(64, 64, 3 ,1, padding=1)
+        # self.dcn_2 = modulated_deform_conv.ModulatedDeformConvPack(128, 128, kernel_size=(3, 3), stride=1, padding=1, groups=1, deformable_groups=1, double=True).cuda()
+        self.conv2 = Conv2dBlock(128, 128, 3 ,1, padding=1)
 
     def forward(self, x, skip1, skip2):
         output = x
@@ -88,18 +90,20 @@ class Decoder(nn.Module):
 
             if i == 2: 
                 deformable_concat = torch.cat((output,skip2), dim=1)
-                concat_pre, offset2 = self.dcn_2(deformable_concat, skip2)
-                output = torch.cat((concat_pre,output), dim=1)
+                # concat_pre, offset2 = self.dcn_2(deformable_concat, skip2)
+                concat_pre = self.conv2(deformable_concat)
+                output = torch.cat((concat_pre, output), dim=1)
 
             if i == 4:
                 deformable_concat = torch.cat((output,skip1), dim=1)
-                concat_pre, offset1 = self.dcn(deformable_concat, skip1)
-                output = torch.cat((concat_pre,output), dim=1)
+                # concat_pre, offset1 = self.dcn(deformable_concat, skip1)
+                concat_pre = self.conv1(deformable_concat)
+                output = torch.cat((concat_pre, output), dim=1)
             
-        offset_sum1 = torch.mean(torch.abs(offset1))
-        offset_sum2 = torch.mean(torch.abs(offset2))
-        offset_sum = (offset_sum1+offset_sum2)/2
-        return output, offset_sum
+        # offset_sum1 = torch.mean(torch.abs(offset1))
+        # offset_sum2 = torch.mean(torch.abs(offset2))
+        # offset_sum = (offset_sum1+offset_sum2)/2
+        return output # , offset_sum
 
 
 class ContentEncoder(nn.Module):
@@ -108,30 +112,41 @@ class ContentEncoder(nn.Module):
         print("Init ContentEncoder")
 
         nf = nf_cnt
-
-        self.model = nn.ModuleList()
-        self.model.append(ResBlocks(n_res, 256, norm=norm, act=act, pad_type=pad, use_sn=use_sn))
-        self.model = nn.Sequential(*self.model)
-        self.dcn1 = modulated_deform_conv.ModulatedDeformConvPack(3, 64, kernel_size=(7, 7), stride=1, padding=3, groups=1, deformable_groups=1).cuda()
-        self.dcn2 = modulated_deform_conv.ModulatedDeformConvPack(64, 128, kernel_size=(4, 4), stride=2, padding=1, groups=1, deformable_groups=1).cuda()
-        self.dcn3 = modulated_deform_conv.ModulatedDeformConvPack(128, 256, kernel_size=(4, 4), stride=2, padding=1, groups=1, deformable_groups=1).cuda()
+        # let input size be 128
+        # 128
+        # self.dcn1 = modulated_deform_conv.ModulatedDeformConvPack(3, 64, kernel_size=(7, 7), stride=1, padding=3, groups=1, deformable_groups=1).cuda()
+        self.conv1 = Conv2dBlock(3, 64, 7, 1, padding=1)
+        # 128
+        # self.dcn2 = modulated_deform_conv.ModulatedDeformConvPack(64, 128, kernel_size=(4, 4), stride=2, padding=1, groups=1, deformable_groups=1).cuda()
+        self.conv2 = Conv2dBlock(64, 128, 4, 2, padding=1)
+        # 64
+        # self.dcn3 = modulated_deform_conv.ModulatedDeformConvPack(128, 256, kernel_size=(4, 4), stride=2, padding=1, groups=1, deformable_groups=1).cuda()
+        self.conv3 = Conv2dBlock(128, 256, 4, 2, padding=1)
+        # 32
         self.IN1 = nn.InstanceNorm2d(64)
         self.IN2 = nn.InstanceNorm2d(128)
         self.IN3 = nn.InstanceNorm2d(256)
         self.activation = nn.ReLU(inplace=True)
 
+        # 32
+        self.model = nn.ModuleList()
+        self.model.append(ResBlocks(n_res, 256, norm=norm, act=act, pad_type=pad, use_sn=use_sn))
+        self.model = nn.Sequential(*self.model)
+        # 32
+
     def forward(self, x):
-        x, _ = self.dcn1(x, x)
+        # x, _ = self.dcn1(x, x)
+        x = self.conv1(x, x)
         x = self.IN1(x)
         x = self.activation(x)
         skip1 = x
-        
-        x, _ = self.dcn2(x, x)
+        # x, _ = self.dcn2(x, x)
+        x = self.conv2(x, x)
         x = self.IN2(x)
         x = self.activation(x)
         skip2 = x
-
-        x, _ = self.dcn3(x, x)
+        # x, _ = self.dcn3(x, x)
+        x = self.conv3(x, x)
         x = self.IN3(x)
         x = self.activation(x)
         x = self.model(x)

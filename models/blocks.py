@@ -14,7 +14,7 @@ class ResBlocks(nn.Module):
     def forward(self, x):
         return self.model(x)
 
-
+# 輸入與輸出大小相同
 class ResBlock(nn.Module):
     def __init__(self, dim, norm='in', act='relu', pad_type='zero', use_sn=False):
         super(ResBlock, self).__init__()
