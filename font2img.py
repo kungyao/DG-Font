@@ -1,10 +1,13 @@
 from PIL import Image,ImageDraw,ImageFont
 # import matplotlib.pyplot as plt
 import os
+from sys import platform
 # import numpy as np
 import pathlib
 import argparse
 
+# command
+# python .\font2img.py --ttf_path ..\..\..\..\Manga\fonts\ --img_size 64 --chara_size 64
 
 parser = argparse.ArgumentParser(description='Obtaining characters from .ttf')
 parser.add_argument('--ttf_path', type=str, default='../ttf_folder',help='ttf directory')
@@ -14,12 +17,13 @@ parser.add_argument('--img_size', type=int, help='The size of generated images')
 parser.add_argument('--chara_size', type=int, help='The size of generated characters')
 args = parser.parse_args()
 
-file_object = open(args.chara,encoding='utf-8')   
+file_object = open(args.chara, encoding='utf-8')   
 try:
 	characters = file_object.read()
 finally:
     file_object.close()
 
+print(characters)
 
 def draw_single_char(ch, font, canvas_size, x_offset, y_offset):
     img = Image.new("RGB", (canvas_size, canvas_size), (255, 255, 255))
@@ -37,7 +41,7 @@ data_dir = args.ttf_path
 data_root = pathlib.Path(data_dir)
 print(data_root)
 
-def collect_font_path(extension=['otf', 'ttf', 'TTF']):
+def collect_font_path(extension):
     paths = []
     for ext in extension:
         tmp_paths = list(data_root.glob(f'*.{ext}*'))
@@ -47,10 +51,14 @@ def collect_font_path(extension=['otf', 'ttf', 'TTF']):
 
 # all_image_paths = list(data_root.glob('*.ttf*'))
 # all_image_paths = [str(path) for path in all_image_paths]
-all_image_paths = collect_font_path(extension=['otf', 'ttf', 'TTF'])
+if platform == "win32":
+    all_image_paths = collect_font_path(['otf', 'ttc', 'ttf'])
+else:
+    # assume the other system is case-insensitive
+    all_image_paths = collect_font_path(['otf', 'ttc', 'ttf', 'TTF'])
 print(len(all_image_paths))
-for i in range (len(all_image_paths)):
-    print(all_image_paths[i])
+# for i in range (len(all_image_paths)):
+#     print(all_image_paths[i])
 
 seq = list()
 
@@ -60,6 +68,6 @@ for (label,item) in zip(range(len(all_image_paths)),all_image_paths):
         img = draw_example(chara, src_font, args.img_size, (args.img_size-args.chara_size)/2, (args.img_size-args.chara_size)/2)
         path_full = os.path.join(args.save_path, 'id_%d'%label)
         if not os.path.exists(path_full):
-            os.mkdir(path_full)
+            os.makedirs(path_full)
         img.save(os.path.join(path_full, "%04d.png" % (cnt)))
         
