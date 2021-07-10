@@ -152,6 +152,7 @@ class ContentEncoder(nn.Module):
         x = self.model(x)
         return x, skip1, skip2
 
+
 class MLP(nn.Module):
     def __init__(self, nf_in, nf_out, nf_mlp, num_blocks, norm, act, use_sn=False):
         super(MLP, self).__init__()
