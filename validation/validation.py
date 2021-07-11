@@ -57,7 +57,8 @@ def validateUN(data_loader, networks, epoch, args, additional=None):
                     tmp_sample = torch.cat((tmp_sample, x_), 0)
             x_each_cls.append(tmp_sample)
     
-    
+    do_random = False
+
     if epoch >= args.fid_start:
         # Reference guided
         with torch.no_grad():
@@ -65,14 +66,16 @@ def validateUN(data_loader, networks, epoch, args, additional=None):
             ones = torch.ones(1, x_each_cls[0].size(1), x_each_cls[0].size(2), x_each_cls[0].size(3)).cuda(args.gpu, non_blocking=True)
             for src_idx in range(len(args.att_to_use)):
                 x_src = x_each_cls[src_idx][:args.val_batch, :, :, :].cuda(args.gpu, non_blocking=True)
-                rnd_idx = torch.randperm(x_each_cls[src_idx].size(0))[:args.val_batch]
-                x_src_rnd = x_each_cls[src_idx][rnd_idx].cuda(args.gpu, non_blocking=True)
+                if do_random:
+                    rnd_idx = torch.randperm(x_each_cls[src_idx].size(0))[:args.val_batch]
+                    x_src_rnd = x_each_cls[src_idx][rnd_idx].cuda(args.gpu, non_blocking=True)
                 for ref_idx in range(len(args.att_to_use)):
                     x_res_ema = torch.cat((ones, x_src), 0)
-                    x_rnd_ema = torch.cat((ones, x_src_rnd), 0)
                     x_ref = x_each_cls[ref_idx][:args.val_batch, :, :, :].cuda(args.gpu, non_blocking=True)
-                    rnd_idx = torch.randperm(x_each_cls[ref_idx].size(0))[:args.val_batch]
-                    x_ref_rnd = x_each_cls[ref_idx][rnd_idx].cuda(args.gpu, non_blocking=True)
+                    if do_random:
+                        x_rnd_ema = torch.cat((ones, x_src_rnd), 0)
+                        rnd_idx = torch.randperm(x_each_cls[ref_idx].size(0))[:args.val_batch]
+                        x_ref_rnd = x_each_cls[ref_idx][rnd_idx].cuda(args.gpu, non_blocking=True)
                     for sample_idx in range(args.val_batch):
                         # todo : 
                         # If length >= len(list) in doing list[:length], it will return len(list) items.
@@ -91,20 +94,22 @@ def validateUN(data_loader, networks, epoch, args, additional=None):
                         # x_res_ema_tmp, _ = G_EMA.decode(c_src, s_ref, skip1, skip2)
                         x_res_ema_tmp = G_EMA.decode(c_src, s_ref, skip1, skip2)
     
-                        x_ref_tmp = x_ref_rnd[sample_idx: sample_idx + 1].repeat((args.val_batch, 1, 1, 1))
-    
-                        c_src, skip1, skip2 = G_EMA.cnt_encoder(x_src_rnd)
-                        s_ref = C_EMA(x_ref_tmp, sty=True)
-                        # x_rnd_ema_tmp, _ = G_EMA.decode(c_src, s_ref, skip1, skip2)
-                        x_rnd_ema_tmp = G_EMA.decode(c_src, s_ref, skip1, skip2)
-    
                         x_res_ema_tmp = torch.cat((x_ref[sample_idx: sample_idx + 1], x_res_ema_tmp), 0)
                         x_res_ema = torch.cat((x_res_ema, x_res_ema_tmp), 0)
-    
-                        x_rnd_ema_tmp = torch.cat((x_ref_rnd[sample_idx: sample_idx + 1], x_rnd_ema_tmp), 0)
-                        x_rnd_ema = torch.cat((x_rnd_ema, x_rnd_ema_tmp), 0)
+
+                        if do_random:
+                            x_ref_tmp = x_ref_rnd[sample_idx: sample_idx + 1].repeat((args.val_batch, 1, 1, 1))
+        
+                            c_src, skip1, skip2 = G_EMA.cnt_encoder(x_src_rnd)
+                            s_ref = C_EMA(x_ref_tmp, sty=True)
+                            # x_rnd_ema_tmp, _ = G_EMA.decode(c_src, s_ref, skip1, skip2)
+                            x_rnd_ema_tmp = G_EMA.decode(c_src, s_ref, skip1, skip2)
+        
+                            x_rnd_ema_tmp = torch.cat((x_ref_rnd[sample_idx: sample_idx + 1], x_rnd_ema_tmp), 0)
+                            x_rnd_ema = torch.cat((x_rnd_ema, x_rnd_ema_tmp), 0)
     
                     vutils.save_image(x_res_ema, os.path.join(args.res_dir, '{}_EMA_{}_{}_{}.jpg'.format(args.gpu, epoch+1, src_idx, ref_idx)), normalize=True,
                                     nrow=(x_res_ema.size(0) // (x_src.size(0) + 2) + 1))
-                    vutils.save_image(x_rnd_ema, os.path.join(args.res_dir, '{}_RNDEMA_{}_{}_{}.jpg'.format(args.gpu, epoch+1, src_idx, ref_idx)), normalize=True,
+                    if do_random:
+                        vutils.save_image(x_rnd_ema, os.path.join(args.res_dir, '{}_RNDEMA_{}_{}_{}.jpg'.format(args.gpu, epoch+1, src_idx, ref_idx)), normalize=True,
                                     nrow=(x_res_ema.size(0) // (x_src.size(0) + 2) + 1))
