@@ -28,7 +28,14 @@ print(characters)
 def draw_single_char(ch, font, canvas_size, x_offset, y_offset):
     img = Image.new("RGB", (canvas_size, canvas_size), (255, 255, 255))
     draw = ImageDraw.Draw(img)
-    draw.text((x_offset, y_offset), ch, (0, 0, 0), font=font)
+    # get real offset according to font
+    font_width, font_height = font.getsize(ch)
+    font_offset = font.getoffset(ch)
+    font_offset = (
+        (canvas_size - font_width - font_offset[0])/2 ,
+        (canvas_size - font_height - font_offset[1])/2, 
+    )
+    draw.text((x_offset+font_offset[0], y_offset+font_offset[1]), ch, (0, 0, 0), font=font)
     return img
 
 def draw_example(ch, src_font, canvas_size, x_offset, y_offset):
