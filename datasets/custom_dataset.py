@@ -269,3 +269,31 @@ class CrossdomainFolder(data.Dataset):
         tmp = '    Transforms (if any): '
         fmt_str += '{0}{1}\n'.format(tmp, self.transform.__repr__().replace('\n', '\n' + ' ' * len(tmp)))
         return fmt_str
+
+
+class ImageReader(data.Dataset):
+    '''
+        folder/xxx.ext
+        folder/xxy.ext
+        folder/xxz.ext
+    '''
+    def __init__(self, folder_path, transform=None, loader=default_loader):
+        super(ImageReader, self).__init__()
+        self.imgs = self.collect_image_paths(folder_path)
+        self.loader = loader
+        self.transform = transform
+
+    def collect_image_paths(self, folder_path):
+        imgs = []
+        for file in os.listdir(folder_path):
+            imgs.append(os.path.join(folder_path, file))
+        return imgs
+
+    def __getitem__(self, index):
+        img = self.loader(self.imgs[index])
+        if self.transform is not None:
+            img = self.transform(img)
+        return img
+
+    def __len__(self):
+        return len(self.imgs)

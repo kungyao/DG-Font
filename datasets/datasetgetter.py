@@ -4,9 +4,9 @@ import os
 import torchvision.transforms as transforms
 
 try:
-    from datasets.custom_dataset import ImageFolerRemap, CrossdomainFolder
+    from datasets.custom_dataset import ImageFolerRemap, CrossdomainFolder, ImageReader
 except ImportError:
-    from custom_dataset import ImageFolerRemap, CrossdomainFolder
+    from custom_dataset import ImageFolerRemap, CrossdomainFolder, ImageReader
 
 class Compose(object):
     def __init__(self, tf):
@@ -89,3 +89,22 @@ def get_dataset(args):
     return train_dataset, val_dataset
 
 
+# for my validation use
+def get_my_dataset(args):
+
+    mean = [0.5, 0.5, 0.5]
+    std = [0.5, 0.5, 0.5]
+
+    normalize = transforms.Normalize(mean=mean, std=std)
+
+    transform = Compose([transforms.Resize((args.img_size, args.img_size)),
+                                    transforms.ToTensor(),
+                                    normalize])
+
+    content_dataset = ImageReader(args.my_input_content, transform=transform)
+    style_dataset = ImageReader(args.my_input_style, transform=transform)
+
+    print("Content size :", len(content_dataset))
+    print("Style size :", len(style_dataset))
+
+    return content_dataset, style_dataset

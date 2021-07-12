@@ -24,17 +24,20 @@ from train.train import trainGAN
 from validation.validation import validateUN
 
 from tools.utils import *
-from datasets.datasetgetter import get_dataset
+from datasets.datasetgetter import get_dataset, get_my_dataset
 from tools.ops import initialize_queue
 
 from tensorboardX import SummaryWriter
 
 # command
+## train
 # python main.py --img_size 64 --data_path ../save_folder --epochs 5 --iters 1000 --output_k 83 --batch_size 16 --val_num 4 --val_batch 4
 # keep train
 # python main.py --img_size 64 --data_path ../save_folder --epochs 10 --iters 1000 --output_k 83 --batch_size 16 --val_num 4  -val_batch 4 --load_model 
-#
+## test
 # python main.py --img_size 64 --data_path ../save_folder --output_k 83 --batch_size 16 --validation --val_num 5 --load_model 
+## my test
+# python main.py --img_size 64 --my_input_content ../save_folder/id_4/ --my_input_style ../my_style/ --my_output ../result/ --output_k 83 --batch_size 16 --my_validation --val_batch 5 --load_model GAN_20210712-011551
 #
 
 # Configuration
@@ -70,6 +73,15 @@ parser.add_argument('--load_model', default=None, type=str, metavar='PATH',
                          'It loads the latest .ckpt file specified in checkpoint.txt in GAN_20190101_101010')
 parser.add_argument('--validation', dest='validation', action='store_true',
                     help='Call for valiation only mode')
+# My validation
+parser.add_argument('--my_validation', dest='my_validation', action='store_true',
+                    help='Call for valiation only mode')
+parser.add_argument('--my_input_content', dest='my_input_content', type=str,
+                    help='Input content folder')
+parser.add_argument('--my_input_style', dest='my_input_style', type=str,
+                    help='Input style folder')
+parser.add_argument('--my_output', dest='my_output', type=str,
+                    help='Output result folder')
 
 parser.add_argument('--world-size', default=1, type=int,
                     help='number of nodes for distributed training')
@@ -179,7 +191,6 @@ def main():
     else:
         main_worker(args.gpu, ngpus_per_node, args)
 
-
 def main_worker(gpu, ngpus_per_node, args):
     if len(args.gpu) == 1:
         args.gpu = 0
@@ -217,6 +228,15 @@ def main_worker(gpu, ngpus_per_node, args):
     # load model if args.load_model is specified
     load_model(args, networks, opts)
     cudnn.benchmark = True
+
+    ############################################################
+    if args.my_validation:
+        from validation.my_validation import my_validation
+        content_dataset, style_dataset = get_my_dataset(args)
+        content_loader = torch.utils.data.DataLoader(content_dataset, batch_size=args.val_batch, shuffle=False, num_workers=4, pin_memory=True, drop_last=False)
+        style_loader = torch.utils.data.DataLoader(style_dataset, batch_size=args.val_batch, shuffle=False, num_workers=4, pin_memory=True, drop_last=False)
+        my_validation(networks, content_loader, style_loader, args)
+        return
 
     # get dataset and data loader
     train_dataset, val_dataset = get_dataset(args)
