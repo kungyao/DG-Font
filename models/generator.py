@@ -11,8 +11,8 @@ try:
 except:
     from blocks import LinearBlock, Conv2dBlock, ResBlocks
 
-import sys
-sys.path.append('..')
+# import sys
+# sys.path.append('..')
 # from modules import modulated_deform_conv
 
 class Generator(nn.Module):   

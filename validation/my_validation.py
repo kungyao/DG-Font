@@ -35,6 +35,7 @@ def my_validation(networks, content_loader, style_loader, args):
             batch_style = x_ref.size(0)
             # nrows += batch_style
             for i in range(batch_style):
+                x_res_ema = torch.cat((x_res_ema, x_ref[i:i+1]), 0)
                 for content_imgs in content_list:
                     x_src = content_imgs.cuda(args.gpu, non_blocking=True)
                     x_ref_tmp = x_ref[i:i+1].repeat((content_imgs.size(0), 1, 1, 1)).cuda(args.gpu, non_blocking=True)
@@ -44,7 +45,6 @@ def my_validation(networks, content_loader, style_loader, args):
                     x_res_ema_tmp = G_EMA.decode(c_src, s_ref, skip1, skip2)
 
                     x_res_ema_tmp = x_res_ema_tmp.cpu()
-                    x_res_ema_tmp = torch.cat((x_ref[i:i+1], x_res_ema_tmp), 0)
                     x_res_ema = torch.cat((x_res_ema, x_res_ema_tmp), 0)
 
         model_name = os.path.basename(args.res_dir)

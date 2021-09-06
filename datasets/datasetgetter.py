@@ -61,8 +61,10 @@ def get_dataset(args):
     val_idx = None
     for k in class_to_use:
         tmp_idx = (tot_targets == k).nonzero()
-        train_tmp_idx = tmp_idx[:-args.val_num]
-        val_tmp_idx = tmp_idx[-args.val_num:]
+        # train_tmp_idx = tmp_idx[:-args.val_num]
+        train_tmp_idx = tmp_idx
+        # val_tmp_idx = tmp_idx[-args.val_num:]
+        val_tmp_idx = tmp_idx
         if k == class_to_use[0]:
             train_idx = train_tmp_idx.clone()
             val_idx = val_tmp_idx.clone()
