@@ -13,10 +13,14 @@ def trainGAN(data_loader, networks, opts, epoch, args, additional):
     # avg meter
     d_losses = AverageMeter()
     d_advs = AverageMeter()
+    #########
+    d_daku_advs = AverageMeter()
     d_gps = AverageMeter()
 
     g_losses = AverageMeter()
     g_advs = AverageMeter()
+    #########
+    g_daku_advs = AverageMeter()
     g_imgrecs = AverageMeter()
     g_rec = AverageMeter()
 
@@ -24,16 +28,21 @@ def trainGAN(data_loader, networks, opts, epoch, args, additional):
 
     # set nets
     D = networks['D']
+    #########
+    D_DAKU = networks['D_jp_dakuten']
     G = networks['G'] if not args.distributed else networks['G'].module
     C = networks['C'] if not args.distributed else networks['C'].module
     G_EMA = networks['G_EMA'] if not args.distributed else networks['G_EMA'].module
     C_EMA = networks['C_EMA'] if not args.distributed else networks['C_EMA'].module
     # set opts
     d_opt = opts['D']
+    #########
+    d_daku_opt = opts['D_jp_dakuten']
     g_opt = opts['G']
     c_opt = opts['C']
     # switch to train mode
     D.train()
+    D_DAKU.train()
     G.train()
     C.train()
     C_EMA.train()
@@ -41,27 +50,26 @@ def trainGAN(data_loader, networks, opts, epoch, args, additional):
 
     logger = additional['logger']
 
-
     # summary writer
     train_it = iter(data_loader)
 
     t_train = trange(0, args.iters, initial=0, total=args.iters)
 
     for i in t_train:
+        #########
         try:
-            imgs, y_org = next(train_it)
+            imgs, y_org, jp_daku_class = next(train_it)
         except:
             train_it = iter(data_loader)
-            imgs, y_org = next(train_it)
+            imgs, y_org, jp_daku_class = next(train_it)
 
         x_org = imgs
 
+        x_org = x_org.cuda(args.gpu)
+        y_org = y_org.cuda(args.gpu)
+        jp_daku_class = jp_daku_class.cuda(args.gpu)
 
         x_ref_idx = torch.randperm(x_org.size(0))
-
-        x_org = x_org.cuda(args.gpu)
-
-        y_org = y_org.cuda(args.gpu)
         x_ref_idx = x_ref_idx.cuda(args.gpu)
 
         x_ref = x_org.clone()
@@ -75,6 +83,9 @@ def trainGAN(data_loader, networks, opts, epoch, args, additional):
         with torch.no_grad():
             y_ref = y_org.clone()
             y_ref = y_ref[x_ref_idx]
+            #########
+            y_daku_ref = jp_daku_class.clone()
+            y_daku_ref = y_daku_ref[x_ref_idx]
             s_ref = C.moco(x_ref)
             c_src, skip1, skip2 = G.cnt_encoder(x_org)
             # x_fake, _ = G.decode(c_src, s_ref, skip1, skip2)
@@ -87,12 +98,21 @@ def trainGAN(data_loader, networks, opts, epoch, args, additional):
 
         d_adv_real = calc_adv_loss(d_real_logit, 'd_real')
         d_adv_fake = calc_adv_loss(d_fake_logit, 'd_fake')
-
+        #########
+        d_daku_real_logit, _ = D_DAKU(x_ref, y_daku_ref)
+        d_daku_fake_logit, _ = D_DAKU(x_fake.detach(), jp_daku_class)
+        #########
+        d_daku_adv_real = calc_adv_loss(d_daku_real_logit, 'd_real')
+        d_daku_adv_fake = calc_adv_loss(d_daku_fake_logit, 'd_fake')
+        #########
         d_adv = d_adv_real + d_adv_fake
+        d_daku_adv = d_daku_adv_real + d_daku_adv_fake
 
         d_gp = args.w_gp * compute_grad_gp(d_real_logit, x_ref, is_patch=False)
+        #########
+        d_daku_gp = args.w_gp * compute_grad_gp(d_daku_real_logit, x_ref, is_patch=False)
 
-        d_loss = d_adv + d_gp
+        d_loss = d_adv + d_gp + d_daku_adv + d_daku_gp
 
         d_opt.zero_grad()
         d_adv_real.backward(retain_graph=True)
@@ -101,6 +121,13 @@ def trainGAN(data_loader, networks, opts, epoch, args, additional):
         if args.distributed:
             average_gradients(D)
         d_opt.step()
+
+        #########
+        d_daku_opt.zero_grad()
+        d_daku_adv_real.backward(retain_graph=True)
+        d_daku_gp.backward(retain_graph=True)
+        d_daku_adv_fake.backward()
+        d_daku_opt.step()
 
         # Train G
         s_src = C.moco(x_org)
@@ -118,7 +145,15 @@ def trainGAN(data_loader, networks, opts, epoch, args, additional):
         g_adv_fake = calc_adv_loss(g_fake_logit, 'g')
         g_adv_rec = calc_adv_loss(g_rec_logit, 'g')
 
+        # g_daku_fake_logit, _ = D_DAKU(x_fake, y_daku_ref)
+        g_daku_fake_logit, _ = D_DAKU(x_fake, jp_daku_class)
+        g_daku_rec_logit, _ = D_DAKU(x_rec, jp_daku_class)
+        
+        g_daku_adv_fake = calc_adv_loss(g_daku_fake_logit, 'g')
+        g_daku_adv_rec = calc_adv_loss(g_daku_rec_logit, 'g')
+
         g_adv = g_adv_fake + g_adv_rec
+        g_daku_adv = g_daku_adv_fake + g_daku_adv_rec
 
         g_imgrec = calc_recon_loss(x_rec, x_org)
 
@@ -126,7 +161,7 @@ def trainGAN(data_loader, networks, opts, epoch, args, additional):
         g_conrec = calc_recon_loss(c_x_fake, c_src)
 
         # g_loss = args.w_adv * g_adv + args.w_rec * g_imgrec +args.w_rec * g_conrec + args.w_off * offset_loss
-        g_loss = args.w_adv * g_adv + args.w_rec * g_imgrec +args.w_rec * g_conrec
+        g_loss = args.w_adv * g_adv + args.w_rec * g_imgrec +args.w_rec * g_conrec + args.w_daku_adv * g_daku_adv
  
         g_opt.zero_grad()
         c_opt.zero_grad()
@@ -153,10 +188,12 @@ def trainGAN(data_loader, networks, opts, epoch, args, additional):
             if epoch >= args.separated:
                 d_losses.update(d_loss.item(), x_org.size(0))
                 d_advs.update(d_adv.item(), x_org.size(0))
+                d_daku_advs.update(d_daku_adv.item(), x_org.size(0))
                 d_gps.update(d_gp.item(), x_org.size(0))
 
                 g_losses.update(g_loss.item(), x_org.size(0))
                 g_advs.update(g_adv.item(), x_org.size(0))
+                g_daku_advs.update(g_daku_adv.item(), x_org.size(0))
                 g_imgrecs.update(g_imgrec.item(), x_org.size(0))
                 g_rec.update(g_conrec.item(), x_org.size(0))
 
@@ -166,10 +203,12 @@ def trainGAN(data_loader, networks, opts, epoch, args, additional):
                 summary_step = epoch * args.iters + i
                 add_logs(args, logger, 'D/LOSS', d_losses.avg, summary_step)
                 add_logs(args, logger, 'D/ADV', d_advs.avg, summary_step)
+                add_logs(args, logger, 'D/ADV_DAKU', d_daku_advs.avg, summary_step)
                 add_logs(args, logger, 'D/GP', d_gps.avg, summary_step)
 
                 add_logs(args, logger, 'G/LOSS', g_losses.avg, summary_step)
                 add_logs(args, logger, 'G/ADV', g_advs.avg, summary_step)
+                add_logs(args, logger, 'G/ADV_DAKU', g_daku_advs.avg, summary_step)
                 add_logs(args, logger, 'G/IMGREC', g_imgrecs.avg, summary_step)
                 add_logs(args, logger, 'G/conrec', g_rec.avg, summary_step)
 

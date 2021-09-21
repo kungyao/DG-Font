@@ -31,9 +31,9 @@ from tensorboardX import SummaryWriter
 
 # command
 ## train
-# python main.py --img_size 64 --data_path ../save_folder --epochs 5 --iters 1000 --output_k 83 --batch_size 16 --val_num 4 --val_batch 4
+# python main.py --img_size 64 --data_path ../save_folder --epochs 10 --iters 1000 --output_k 83 --batch_size 32 --val_num 10 --val_batch 10
 # keep train
-# python main.py --img_size 64 --data_path ../save_folder --epochs 10 --iters 1000 --output_k 83 --batch_size 16 --val_num 4  -val_batch 4 --load_model 
+# python main.py --img_size 64 --data_path ../save_folder --epochs 25 --iters 1000 --output_k 83 --batch_size 32 --val_num 10 --val_batch 10 --load_model GAN_20210906-162601
 ## test
 # python main.py --img_size 64 --data_path ../save_folder --output_k 83 --batch_size 16 --validation --val_num 5 --load_model 
 ## my test
@@ -97,9 +97,9 @@ parser.add_argument('--iid_mode', default='iid+', type=str, choices=['iid', 'iid
 parser.add_argument('--w_gp', default=10.0, type=float, help='Coefficient of GP of D')
 parser.add_argument('--w_rec', default=0.1, type=float, help='Coefficient of Rec. loss of G')
 parser.add_argument('--w_adv', default=1.0, type=float, help='Coefficient of Adv. loss of G')
+parser.add_argument('--w_daku_adv', default=0.4, type=float, help='Coefficient of Adv. loss of G')
 parser.add_argument('--w_vec', default=0.01, type=float, help='Coefficient of Style vector rec. loss of G')
 # parser.add_argument('--w_off', default=0.5, type=float, help='Coefficient of offset normalization. loss of G')
-
 
 def main():
     ####################
@@ -276,8 +276,9 @@ def main_worker(gpu, ngpus_per_node, args):
                 networks['G_EMA'].load_state_dict(networks['G'].state_dict())
 
         trainFunc(train_loader, networks, opts, epoch, args, {'logger': logger})
-
-        validationFunc(val_loader, networks, epoch, args, {'logger': logger})
+        # Odd or last
+        if epoch % 2 == 1 or epoch == args.epochs - 1:
+            validationFunc(val_loader, networks, epoch, args, {'logger': logger})
         
         # if (epoch + 1) % (args.epochs // 25) == 0:
         #     save_model(args, epoch, networks, opts)
@@ -292,7 +293,7 @@ def print_args(args):
 
 
 def build_model(args):
-    args.to_train = 'CDG'
+    args.to_train = 'CDGJ'
 
     networks = {}
     opts = {}
@@ -301,6 +302,8 @@ def build_model(args):
         networks['C_EMA'] = GuidingNet(args.img_size, {'cont': args.sty_dim, 'disc': args.output_k})
     if 'D' in args.to_train:
         networks['D'] = Discriminator(args.img_size, num_domains=args.output_k)
+    if 'J' in args.to_train:
+        networks['D_jp_dakuten'] = Discriminator(args.img_size, num_domains=4)
     if 'G' in args.to_train:
         networks['G'] = Generator(args.img_size, args.sty_dim, use_sn=False)
         networks['G_EMA'] = Generator(args.img_size, args.sty_dim, use_sn=False)
@@ -340,6 +343,10 @@ def build_model(args):
     if 'D' in args.to_train:
         opts['D'] = torch.optim.RMSprop(
             networks['D'].module.parameters() if args.distributed else networks['D'].parameters(),
+            1e-4, weight_decay=0.0001)
+    if 'J' in args.to_train:
+        opts['D_jp_dakuten'] = torch.optim.RMSprop(
+            networks['D_jp_dakuten'].module.parameters() if args.distributed else networks['D_jp_dakuten'].parameters(),
             1e-4, weight_decay=0.0001)
     if 'G' in args.to_train:
         opts['G'] = torch.optim.RMSprop(

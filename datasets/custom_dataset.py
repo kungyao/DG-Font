@@ -32,6 +32,24 @@ def is_image_file(filename):
     """
     return has_file_allowed_extension(filename, IMG_EXTENSIONS)
 
+# def class_maper(ch):
+#     if ch in "アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲン":
+#         return 1
+#     elif ch in "ガギグゲゴザジズゼゾダヂヅデドバビブベボ":
+#         return 2
+#     elif ch in "パピプペポ":
+#         return 3
+#     return 0
+
+# dakuten
+def class_maper(idx):
+    if idx <= 45:
+        return 1
+    elif idx <= 65:
+        return 2
+    elif idx <= 70:
+        return 3
+    return 0
 
 def make_dataset(dir, class_to_idx, extensions):
     images = []
@@ -40,14 +58,17 @@ def make_dataset(dir, class_to_idx, extensions):
         d = os.path.join(dir, target)
         if not os.path.isdir(d):
             continue
-
         for root, _, fnames in sorted(os.walk(d)):
             for fname in sorted(fnames):
                 if has_file_allowed_extension(fname, extensions):
                     path = os.path.join(root, fname)
-                    item = (path, class_to_idx[target])
+                    item = (
+                        path, 
+                        class_to_idx[target], 
+                        # dakuten
+                        class_maper(int(fname.split('.')[0]))
+                    )
                     images.append(item)
-
     return images
 
 
@@ -129,14 +150,14 @@ class DatasetFolder(data.Dataset):
         Returns:
             tuple: (sample, target) where target is class_index of the target class.
         """
-        path, target = self.samples[index]
+        path, target, jp_class = self.samples[index]
         sample = self.loader(path)
         if self.transform is not None:
             sample = self.transform(sample)
         if self.target_transform is not None:
             target = self.target_transform(target)
         imgname = path.split('/')[-1].replace('.JPEG', '')
-        return sample, target, imgname
+        return sample, target, jp_class, imgname
 
     def __len__(self):
         return len(self.samples)
@@ -191,7 +212,7 @@ class ImageFolerRemap(DatasetFolder):
         self.with_idx = with_idx
 
     def __getitem__(self, index):
-        path, target = self.samples[index]
+        path, target, jp_class= self.samples[index]
         sample = self.loader(path)
         if self.transform is not None:
             sample = self.transform(sample)
@@ -199,8 +220,8 @@ class ImageFolerRemap(DatasetFolder):
             target = self.target_transform(target)
         target = self.class_table[target]
         if self.with_idx:
-            return sample, index, target
-        return sample, target
+            return sample, index, target, jp_class
+        return sample, target, jp_class
 
 
 class CrossdomainFolder(data.Dataset):
