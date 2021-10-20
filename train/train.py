@@ -75,8 +75,8 @@ def trainGAN(data_loader, networks, opts, epoch, args, additional):
         x_ref = x_ref[x_ref_idx]
 
         if args.use_stn:
-            x_styl_org = style_imgs
-            x_style_org = x_styl_org.cuda(args.gpu)
+            x_style_org = style_imgs
+            x_style_org = x_style_org.cuda(args.gpu)
             x_style_ref = x_style_org.clone()
             x_style_ref = x_style_ref[x_ref_idx]
 
@@ -93,7 +93,7 @@ def trainGAN(data_loader, networks, opts, epoch, args, additional):
             y_daku_ref = y_daku_ref[x_ref_idx]
             if args.use_stn:
                 s_ref = C.moco(x_style_ref)
-                c_src, skip1, skip2 = G.cnt_encoder(x_styl_org)
+                c_src, skip1, skip2 = G.cnt_encoder(x_style_org)
                 x_fake = G.decode(c_src, s_ref, skip1, skip2)
             else:
                 s_ref = C.moco(x_ref)
@@ -141,9 +141,9 @@ def trainGAN(data_loader, networks, opts, epoch, args, additional):
 
         # Train G
         if args.use_stn:
-            s_src = C.moco(x_styl_org)
+            s_src = C.moco(x_style_org)
             s_ref = C.moco(x_style_ref)
-            c_src, skip1, skip2 = G.cnt_encoder(x_styl_org)
+            c_src, skip1, skip2 = G.cnt_encoder(x_style_org)
         else:
             s_src = C.moco(x_org)
             s_ref = C.moco(x_ref)
