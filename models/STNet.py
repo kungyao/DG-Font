@@ -17,11 +17,12 @@ class SpatialTransformer(nn.Module):
     Returns:
     A roi feature map with the same input spatial dimension as the input feature map. 
     """
-    def __init__(self, in_channels, image_size, use_dropout=False):
+    def __init__(self, in_channels, image_size, fill_background=False, use_dropout=False):
         super(SpatialTransformer, self).__init__()
         self._h, self._w = image_size, image_size
         self._in_ch = in_channels 
         self.dropout = use_dropout
+        self.fill_background = fill_background
 
         # localization net 
         self.conv1 = nn.Conv2d(in_channels, 32, kernel_size=3, stride=1, padding=1, bias=True) # size : [1x3x32x32]
@@ -65,10 +66,11 @@ class SpatialTransformer(nn.Module):
         affine_grid_points = F.affine_grid(theta, x.size(), align_corners=False)
         assert(affine_grid_points.size(0) == x.size(0)), "The batch sizes of the input images must be same as the generated grid."
         rois = F.grid_sample(x, affine_grid_points, padding_mode="zeros")
-        # F.grid_sample padding mode do not have white option.
-        # Input background is white, so we fill rois with white after grid_sample.
-        background = F.grid_sample(torch.ones(x.size(), device=x.device), affine_grid_points)
-        rois = rois + (1 - background) * torch.max(x)
+        if self.fill_background:
+            # F.grid_sample padding mode do not have white option.
+            # Input background is white, so we fill rois with white after grid_sample.
+            background = F.grid_sample(torch.ones(x.size(), device=x.device), affine_grid_points)
+            rois = rois + (1 - background) * torch.max(x)
         # print("rois found to be of size:{}".format(rois.size()))
         # return rois, affine_grid_points, theta
         return rois

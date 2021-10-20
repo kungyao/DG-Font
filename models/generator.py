@@ -150,8 +150,8 @@ class ContentEncoder(nn.Module):
 
         self.use_stn = use_stn
         if use_stn:
-            self.stn1 = SpatialTransformer(3, img_size, use_dropout=True)
-            self.stn2 = SpatialTransformer(64, img_size // 2, use_dropout=True)
+            self.stn1 = SpatialTransformer(3, img_size, fill_background=True, use_dropout=True)
+            self.stn2 = SpatialTransformer(64, img_size, fill_background=False, use_dropout=True)
 
     def forward(self, x):
         # x, _ = self.dcn1(x, x)
