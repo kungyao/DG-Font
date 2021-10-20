@@ -101,6 +101,8 @@ parser.add_argument('--w_daku_adv', default=0.4, type=float, help='Coefficient o
 parser.add_argument('--w_vec', default=0.01, type=float, help='Coefficient of Style vector rec. loss of G')
 # parser.add_argument('--w_off', default=0.5, type=float, help='Coefficient of offset normalization. loss of G')
 
+parser.add_argument('--use_stn', dest='use_stn', action="store_true", help="Use spatial transformer.")
+
 def main():
     ####################
     # Default settings #
@@ -298,15 +300,15 @@ def build_model(args):
     networks = {}
     opts = {}
     if 'C' in args.to_train:
-        networks['C'] = GuidingNet(args.img_size, {'cont': args.sty_dim, 'disc': args.output_k})
-        networks['C_EMA'] = GuidingNet(args.img_size, {'cont': args.sty_dim, 'disc': args.output_k})
+        networks['C'] = GuidingNet(args.img_size, {'cont': args.sty_dim, 'disc': args.output_k}, use_stn=args.use_stn)
+        networks['C_EMA'] = GuidingNet(args.img_size, {'cont': args.sty_dim, 'disc': args.output_k}, use_stn=args.use_stn)
     if 'D' in args.to_train:
         networks['D'] = Discriminator(args.img_size, num_domains=args.output_k)
     if 'J' in args.to_train:
         networks['D_jp_dakuten'] = Discriminator(args.img_size, num_domains=4)
     if 'G' in args.to_train:
-        networks['G'] = Generator(args.img_size, args.sty_dim, use_sn=False)
-        networks['G_EMA'] = Generator(args.img_size, args.sty_dim, use_sn=False)
+        networks['G'] = Generator(args.img_size, args.sty_dim, use_sn=False, use_stn=args.use_stn)
+        networks['G_EMA'] = Generator(args.img_size, args.sty_dim, use_sn=False, use_stn=args.use_stn)
 
     if args.distributed:
         if args.gpu is not None:

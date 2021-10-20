@@ -1,11 +1,13 @@
-from torch import nn
+import math
+
+# import numpy as np
+# import scipy.io as io
 import torch
+from torch import nn
 # import torch.nn.functional as F
 import torch.nn.init as init
-# import scipy.io as io
-import math
-# import numpy as np
 
+from models.STNet import SpatialTransformer
 try:
     from models.blocks import LinearBlock, Conv2dBlock, ResBlocks
 except:
@@ -16,7 +18,7 @@ except:
 # from modules import modulated_deform_conv
 
 class Generator(nn.Module):   
-    def __init__(self, img_size=80, sty_dim=64, n_res=2, use_sn=False):
+    def __init__(self, img_size=64, sty_dim=64, n_res=2, use_sn=False, use_stn=False):
         super(Generator, self).__init__()
         print("Init Generator")
 
@@ -34,7 +36,7 @@ class Generator(nn.Module):
         n_downs = 2
         nf_dec = 256
 
-        self.cnt_encoder = ContentEncoder(self.nf, n_downs, n_res, 'in', 'relu', 'reflect')
+        self.cnt_encoder = ContentEncoder(img_size, self.nf, n_downs, n_res, 'in', 'relu', 'reflect', use_stn=use_stn)
         self.decoder = Decoder(nf_dec, sty_dim, n_downs, n_res, self.decoder_norm, self.decoder_norm, 'relu', 'reflect', use_sn=use_sn)
         self.mlp = MLP(sty_dim, self.adaptive_param_getter(self.decoder), self.nf_mlp, 3, 'none', 'relu')
 
@@ -119,7 +121,7 @@ class Decoder(nn.Module):
 
 
 class ContentEncoder(nn.Module):
-    def __init__(self, nf_cnt, n_downs, n_res, norm, act, pad, use_sn=False):
+    def __init__(self, img_size, nf_cnt, n_downs, n_res, norm, act, pad, use_sn=False, use_stn=False):
         super(ContentEncoder, self).__init__()
         print("Init ContentEncoder")
 
@@ -146,13 +148,22 @@ class ContentEncoder(nn.Module):
         self.model = nn.Sequential(*self.model)
         # 32
 
+        self.use_stn = use_stn
+        if use_stn:
+            self.stn1 = SpatialTransformer(3, img_size, use_dropout=True)
+            self.stn2 = SpatialTransformer(64, img_size // 2, use_dropout=True)
+
     def forward(self, x):
         # x, _ = self.dcn1(x, x)
+        if self.use_stn:
+            x = self.stn1(x)
         x = self.conv1(x)
         x = self.IN1(x)
         x = self.activation(x)
         skip1 = x
         # x, _ = self.dcn2(x, x)
+        if self.use_stn:
+            x = self.stn2(x)
         x = self.conv2(x)
         x = self.IN2(x)
         x = self.activation(x)

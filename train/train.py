@@ -58,13 +58,12 @@ def trainGAN(data_loader, networks, opts, epoch, args, additional):
     for i in t_train:
         #########
         try:
-            imgs, y_org, jp_daku_class = next(train_it)
+            imgs, style_imgs, y_org, jp_daku_class = next(train_it)
         except:
             train_it = iter(data_loader)
-            imgs, y_org, jp_daku_class = next(train_it)
-
+            imgs, style_imgs, y_org, jp_daku_class = next(train_it)
+        
         x_org = imgs
-
         x_org = x_org.cuda(args.gpu)
         y_org = y_org.cuda(args.gpu)
         jp_daku_class = jp_daku_class.cuda(args.gpu)
@@ -74,6 +73,12 @@ def trainGAN(data_loader, networks, opts, epoch, args, additional):
 
         x_ref = x_org.clone()
         x_ref = x_ref[x_ref_idx]
+
+        if args.use_stn:
+            x_styl_org = style_imgs
+            x_style_org = x_styl_org.cuda(args.gpu)
+            x_style_ref = x_style_org.clone()
+            x_style_ref = x_style_ref[x_ref_idx]
 
         training_mode = 'GAN'
 
@@ -86,10 +91,15 @@ def trainGAN(data_loader, networks, opts, epoch, args, additional):
             #########
             y_daku_ref = jp_daku_class.clone()
             y_daku_ref = y_daku_ref[x_ref_idx]
-            s_ref = C.moco(x_ref)
-            c_src, skip1, skip2 = G.cnt_encoder(x_org)
-            # x_fake, _ = G.decode(c_src, s_ref, skip1, skip2)
-            x_fake = G.decode(c_src, s_ref, skip1, skip2)
+            if args.use_stn:
+                s_ref = C.moco(x_style_ref)
+                c_src, skip1, skip2 = G.cnt_encoder(x_styl_org)
+                x_fake = G.decode(c_src, s_ref, skip1, skip2)
+            else:
+                s_ref = C.moco(x_ref)
+                c_src, skip1, skip2 = G.cnt_encoder(x_org)
+                # x_fake, _ = G.decode(c_src, s_ref, skip1, skip2)
+                x_fake = G.decode(c_src, s_ref, skip1, skip2)
 
         x_ref.requires_grad_()
 
@@ -130,14 +140,18 @@ def trainGAN(data_loader, networks, opts, epoch, args, additional):
         d_daku_opt.step()
 
         # Train G
-        s_src = C.moco(x_org)
-        s_ref = C.moco(x_ref)
-
-        c_src, skip1, skip2 = G.cnt_encoder(x_org)
-        # x_fake, offset_loss = G.decode(c_src, s_ref, skip1, skip2)
+        if args.use_stn:
+            s_src = C.moco(x_styl_org)
+            s_ref = C.moco(x_style_ref)
+            c_src, skip1, skip2 = G.cnt_encoder(x_styl_org)
+        else:
+            s_src = C.moco(x_org)
+            s_ref = C.moco(x_ref)
+            c_src, skip1, skip2 = G.cnt_encoder(x_org)
+            # x_fake, offset_loss = G.decode(c_src, s_ref, skip1, skip2)
         x_fake = G.decode(c_src, s_ref, skip1, skip2)
         # x_rec, _ = G.decode(c_src, s_src, skip1, skip2)
-        x_rec = G.decode(c_src, s_src, skip1, skip2)
+        x_rec = G.decode(c_src, s_src, skip1, skip2)                 
 
         g_fake_logit, _ = D(x_fake, y_ref)
         g_rec_logit, _ = D(x_rec, y_org)
@@ -162,7 +176,7 @@ def trainGAN(data_loader, networks, opts, epoch, args, additional):
 
         # g_loss = args.w_adv * g_adv + args.w_rec * g_imgrec +args.w_rec * g_conrec + args.w_off * offset_loss
         g_loss = args.w_adv * g_adv + args.w_rec * g_imgrec +args.w_rec * g_conrec + args.w_daku_adv * g_daku_adv
- 
+
         g_opt.zero_grad()
         c_opt.zero_grad()
         g_loss.backward()

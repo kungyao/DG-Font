@@ -1,6 +1,7 @@
 from torch import nn
 import torch.nn.functional as F
 
+from models.STNet import SpatialTransformer
 # try:
 #     from models.blocks import Conv2dBlock, FRN
 # except:
@@ -17,10 +18,10 @@ cfg = {
 
 
 class GuidingNet(nn.Module):
-    def __init__(self, img_size=64, output_k={'cont': 128, 'disc': 10}):
+    def __init__(self, img_size=64, output_k={'cont': 128, 'disc': 10}, use_stn=False):
         super(GuidingNet, self).__init__()
         # network layers setting
-        self.features = make_layers(cfg['vgg11'], True)
+        self.features = make_layers(cfg['vgg11'], True, use_stn, img_size)
 
         self.disc = nn.Linear(512, output_k['disc'])
         self.cont = nn.Linear(512, output_k['cont'])
@@ -65,13 +66,20 @@ class GuidingNet(nn.Module):
         return disc
 
 
-def make_layers(cfg, batch_norm=False):
+def make_layers(cfg, batch_norm=False, use_stn=False, img_size=64):
     layers = []
+    in_size = img_size
+    stn_count = 2
     in_channels = 3
     for v in cfg:
         if v == 'M':
             layers += [nn.MaxPool2d(kernel_size=2, stride=2)]
+            if use_stn and stn_count > 0:
+                in_size = in_size // 2
         else:
+            if use_stn and stn_count > 0:
+                layers += [SpatialTransformer(in_channels, in_size, use_dropout=True)]
+                stn_count -= 1
             conv2d = nn.Conv2d(in_channels, v, kernel_size=3, padding=1)
             if batch_norm:
                 layers += [conv2d, nn.BatchNorm2d(v), nn.ReLU(inplace=False)]

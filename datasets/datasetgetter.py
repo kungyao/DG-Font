@@ -49,8 +49,8 @@ def get_dataset(args):
 
     img_dir = args.data_dir
 
-    dataset = ImageFolerRemap(img_dir, transform=transform, remap_table=remap_table)
-    valdataset = ImageFolerRemap(img_dir, transform=transform_val, remap_table=remap_table)
+    dataset = ImageFolerRemap(img_dir, transform=transform, remap_table=remap_table, use_stn=args.use_stn)
+    valdataset = ImageFolerRemap(img_dir, transform=transform_val, remap_table=remap_table, use_stn=args.use_stn)
     # parse classes to use
     tot_targets = torch.tensor(dataset.targets)
 
