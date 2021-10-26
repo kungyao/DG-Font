@@ -50,7 +50,8 @@ def validateUN(data_loader, networks, epoch, args, additional=None):
             tmp_sample = None
             for sample_idx in range(len(tmp_iter)):
                 imgs, style_imgs, _, _ = next(tmp_iter)
-                x_ = imgs
+                # x_ = imgs
+                x_ = style_imgs
                 if tmp_sample is None:
                     tmp_sample = x_.clone()
                 else:

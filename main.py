@@ -278,8 +278,8 @@ def main_worker(gpu, ngpus_per_node, args):
                 networks['G_EMA'].load_state_dict(networks['G'].state_dict())
 
         trainFunc(train_loader, networks, opts, epoch, args, {'logger': logger})
-        # Odd or last
-        if epoch % 2 == 1 or epoch == args.epochs - 1:
+
+        if epoch % 5 == 0 or epoch == args.epochs - 1:
             validationFunc(val_loader, networks, epoch, args, {'logger': logger})
         
         # if (epoch + 1) % (args.epochs // 25) == 0:

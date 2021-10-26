@@ -68,20 +68,21 @@ class GuidingNet(nn.Module):
 
 def make_layers(cfg, batch_norm=False, use_stn=False, img_size=64):
     layers = []
-    in_size = img_size
-    stn_count = 2
+    # in_size = img_size
+    # stn_count = 2
     in_channels = 3
-    fill_background = True
+    # fill_background = True
+    # layers += [SpatialTransformer(in_channels, img_size, fill_background=True, use_dropout=False)]
     for v in cfg:
         if v == 'M':
             layers += [nn.MaxPool2d(kernel_size=2, stride=2)]
-            if use_stn and stn_count > 0:
-                in_size = in_size // 2
+            # if use_stn and stn_count > 0:
+            #     in_size = in_size // 2
         else:
-            if use_stn and stn_count > 0:
-                layers += [SpatialTransformer(in_channels, in_size, fill_background=fill_background, use_dropout=True)]
-                fill_background = False
-                stn_count -= 1
+            # if use_stn and stn_count > 0:
+            #     layers += [SpatialTransformer(in_channels, in_size, fill_background=fill_background, use_dropout=False)]
+            #     fill_background = False
+            #     stn_count -= 1
             conv2d = nn.Conv2d(in_channels, v, kernel_size=3, padding=1)
             if batch_norm:
                 layers += [conv2d, nn.BatchNorm2d(v), nn.ReLU(inplace=False)]

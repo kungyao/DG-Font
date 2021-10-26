@@ -41,6 +41,7 @@ class Generator(nn.Module):
         self.mlp = MLP(sty_dim, self.adaptive_param_getter(self.decoder), self.nf_mlp, 3, 'none', 'relu')
 
         self.apply(weights_init('kaiming'))
+        self.cnt_encoder.stn1.initialize()
 
     def forward(self, x_src, s_ref):
         c_src, skip1, skip2 = self.cnt_encoder(x_src)
@@ -150,20 +151,23 @@ class ContentEncoder(nn.Module):
 
         self.use_stn = use_stn
         if use_stn:
-            self.stn1 = SpatialTransformer(3, img_size, fill_background=True, use_dropout=True)
-            self.stn2 = SpatialTransformer(64, img_size, fill_background=False, use_dropout=True)
+            self.stn1 = SpatialTransformer(3, img_size, fill_background=True, use_dropout=False)
+            # self.stn2 = SpatialTransformer(64, img_size, fill_background=False, use_dropout=False)
 
-    def forward(self, x):
+    def rectify(self, x):
+        return self.stn1(x)
+
+    def forward(self, x, if_rectify=True):
         # x, _ = self.dcn1(x, x)
-        if self.use_stn:
-            x = self.stn1(x)
+        if if_rectify and self.use_stn:
+            x = self.rectify(x)
         x = self.conv1(x)
         x = self.IN1(x)
         x = self.activation(x)
         skip1 = x
         # x, _ = self.dcn2(x, x)
-        if self.use_stn:
-            x = self.stn2(x)
+        # if self.use_stn:
+        #     x = self.stn2(x)
         x = self.conv2(x)
         x = self.IN2(x)
         x = self.activation(x)

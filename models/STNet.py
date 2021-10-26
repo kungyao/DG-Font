@@ -33,6 +33,7 @@ class SpatialTransformer(nn.Module):
         self.fc1 = nn.Linear(32*(self._h//8)*(self._w//8), 1024)
         self.fc2 = nn.Linear(1024, 6)
         
+    def initialize(self):
         # Initialize the weights/bias with identity transformation
         self.fc2.weight.data.zero_()
         self.fc2.bias.data.copy_(torch.tensor([1, 0, 0, 0, 1, 0], dtype=torch.float))
