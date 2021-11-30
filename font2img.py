@@ -51,7 +51,7 @@ print(data_root)
 def collect_font_path(extension):
     paths = []
     for ext in extension:
-        tmp_paths = list(data_root.glob(f'*.{ext}*'))
+        tmp_paths = list(data_root.glob(f"*.{ext}*"))
         for path in tmp_paths:
             paths.append(str(path))
     return paths
