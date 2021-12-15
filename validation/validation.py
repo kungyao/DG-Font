@@ -45,7 +45,7 @@ def validateUN(data_loader, networks, epoch, args, additional=None):
             tmp_cls_set = (val_tot_tars == args.att_to_use[cls_idx]).nonzero()[-args.val_num:]
             tmp_ds = torch.utils.data.Subset(val_dataset, tmp_cls_set)
             tmp_dl = torch.utils.data.DataLoader(tmp_ds, batch_size=args.val_num, shuffle=False,
-                                                 num_workers=0, pin_memory=True, drop_last=False)
+                                                 num_workers=0, pin_memory=False, drop_last=False)
             tmp_iter = iter(tmp_dl)
             tmp_sample = None
             for sample_idx in range(len(tmp_iter)):

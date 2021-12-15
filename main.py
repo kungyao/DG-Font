@@ -31,14 +31,21 @@ from tensorboardX import SummaryWriter
 
 # command
 ## train
-# python main.py --img_size 64 --data_path ../save_folder --epochs 10 --iters 1000 --output_k 83 --batch_size 32 --val_num 10 --val_batch 10
+# python main.py --img_size 64 --data_path ../save_folder --epochs 10 --iters 1000 --output_k 146 --batch_size 32 --val_num 10 --val_batch 10
+# python main.py --img_size 64 --data_path ../save_folder --epochs 20 --iters 1000 --output_k 146 --batch_size 64 --val_num 10 --val_batch 10
 # keep train
-# python main.py --img_size 64 --data_path ../save_folder --epochs 25 --iters 1000 --output_k 83 --batch_size 32 --val_num 10 --val_batch 10 --load_model GAN_20210906-162601
+# python main.py --img_size 64 --data_path ../save_folder --epochs 25 --iters 1000 --output_k 146 --batch_size 32 --val_num 10 --val_batch 10 --load_model GAN_20210906-162601
 ## test
-# python main.py --img_size 64 --data_path ../save_folder --output_k 83 --batch_size 16 --validation --val_num 5 --load_model 
+# python main.py --img_size 64 --data_path ../save_folder --output_k 146 --batch_size 16 --validation --val_num 5 --load_model 
 ## my test
-# python main.py --img_size 64 --my_input_content ../save_folder/id_4/ --my_input_style ../my_style/ --my_output ../result/ --output_k 83 --batch_size 16 --my_validation --val_batch 5 --load_model GAN_20210712-011551
+# python main.py --img_size 64 --my_input_content ../save_folder/id_4/ --my_input_style ../my_style/ --my_output ../result/ --output_k 146 --batch_size 16 --my_validation --val_batch 5 --load_model GAN_20210712-011551
 #
+## 
+# Can't use CUDA_VISIBLE_DEVICES to set visible gpu. 
+# "torch.cuda.set_device" fetch the real usable gpu 
+# device (maybe?) and set gpu used by index.
+#
+
 
 # Configuration
 parser = argparse.ArgumentParser(description='PyTorch GAN Training')
@@ -235,8 +242,8 @@ def main_worker(gpu, ngpus_per_node, args):
     if args.my_validation:
         from validation.my_validation import my_validation
         content_dataset, style_dataset = get_my_dataset(args)
-        content_loader = torch.utils.data.DataLoader(content_dataset, batch_size=args.val_batch, shuffle=False, num_workers=4, pin_memory=True, drop_last=False)
-        style_loader = torch.utils.data.DataLoader(style_dataset, batch_size=args.val_batch, shuffle=False, num_workers=4, pin_memory=True, drop_last=False)
+        content_loader = torch.utils.data.DataLoader(content_dataset, batch_size=args.val_batch, shuffle=False, num_workers=4, pin_memory=False, drop_last=False)
+        style_loader = torch.utils.data.DataLoader(style_dataset, batch_size=args.val_batch, shuffle=False, num_workers=4, pin_memory=False, drop_last=False)
         my_validation(networks, content_loader, style_loader, args)
         return
 
@@ -400,11 +407,11 @@ def get_loader(args, dataset):
         train_sampler = None
     train_loader = torch.utils.data.DataLoader(train_dataset_, batch_size=args.batch_size,
                                                 shuffle=(train_sampler is None), num_workers=args.workers,
-                                                pin_memory=True, sampler=train_sampler, drop_last=False)
+                                                pin_memory=False, sampler=train_sampler, drop_last=False)
 
 
     val_loader = torch.utils.data.DataLoader(val_dataset, batch_size=args.val_batch, shuffle=True,
-                                             num_workers=0, pin_memory=True, drop_last=False)
+                                             num_workers=0, pin_memory=False, drop_last=False)
 
     val_loader = {'VAL': val_loader, 'VALSET': val_dataset, 'TRAINSET': train_dataset['FULL']}
 
