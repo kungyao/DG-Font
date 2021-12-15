@@ -24,7 +24,7 @@ def trainGAN(data_loader, networks, opts, epoch, args, additional):
     g_imgrecs = AverageMeter()
     g_rec = AverageMeter()
 
-    # moco_losses = AverageMeter()
+    moco_losses = AverageMeter()
 
     # set nets
     D = networks['D']
@@ -95,12 +95,12 @@ def trainGAN(data_loader, networks, opts, epoch, args, additional):
                 rectify_x_style_ref = G.cnt_encoder.rectify(x_style_ref)
                 s_ref = C.moco(rectify_x_style_ref)
                 c_src, skip1, skip2 = G.cnt_encoder(x_style_org)
-                x_fake = G.decode(c_src, s_ref, skip1, skip2)
+                x_fake, _ = G.decode(c_src, s_ref, skip1, skip2)
             else:
                 s_ref = C.moco(x_ref)
                 c_src, skip1, skip2 = G.cnt_encoder(x_org)
-                # x_fake, _ = G.decode(c_src, s_ref, skip1, skip2)
-                x_fake = G.decode(c_src, s_ref, skip1, skip2)
+                # x_fake = G.decode(c_src, s_ref, skip1, skip2)
+                x_fake, _ = G.decode(c_src, s_ref, skip1, skip2)
 
         if args.use_stn:
             # x_style_ref.requires_grad_()
@@ -196,10 +196,10 @@ def trainGAN(data_loader, networks, opts, epoch, args, additional):
             s_src = C.moco(x_org)
             s_ref = C.moco(x_ref)
             c_src, skip1, skip2 = G.cnt_encoder(x_org)
-            # x_fake, offset_loss = G.decode(c_src, s_ref, skip1, skip2)
-        x_fake = G.decode(c_src, s_ref, skip1, skip2)
-        # x_rec, _ = G.decode(c_src, s_src, skip1, skip2)
-        x_rec = G.decode(c_src, s_src, skip1, skip2)
+        # x_fake = G.decode(c_src, s_ref, skip1, skip2)
+        x_fake, offset_loss = G.decode(c_src, s_ref, skip1, skip2)
+        # x_rec = G.decode(c_src, s_src, skip1, skip2)
+        x_rec, _ = G.decode(c_src, s_src, skip1, skip2)
 
         g_fake_logit, _ = D(x_fake, y_ref)
         g_rec_logit, _ = D(x_rec, y_org)
@@ -228,8 +228,7 @@ def trainGAN(data_loader, networks, opts, epoch, args, additional):
         #     # g_conrec += calc_recon_loss(c_orig_src, c_x_fake)
         #     g_conrec *= (1/2)
 
-        # g_loss = args.w_adv * g_adv + args.w_rec * g_imgrec +args.w_rec * g_conrec + args.w_off * offset_loss
-        g_loss = args.w_adv * g_adv + args.w_rec * g_imgrec +args.w_rec * g_conrec + args.w_daku_adv * g_daku_adv
+        g_loss = args.w_adv * g_adv + args.w_rec * g_imgrec +args.w_rec * g_conrec + args.w_off * offset_loss + args.w_daku_adv * g_daku_adv
 
         g_opt.zero_grad()
         c_opt.zero_grad()
@@ -266,7 +265,7 @@ def trainGAN(data_loader, networks, opts, epoch, args, additional):
                 g_imgrecs.update(g_imgrec.item(), x_org.size(0))
                 g_rec.update(g_conrec.item(), x_org.size(0))
 
-                # moco_losses.update(offset_loss.item(), x_org.size(0))
+                moco_losses.update(offset_loss.item(), x_org.size(0))
 
             if (i + 1) % args.log_step == 0 and (args.gpu == 0 or args.gpu == '0'):
                 summary_step = epoch * args.iters + i
@@ -282,7 +281,7 @@ def trainGAN(data_loader, networks, opts, epoch, args, additional):
                 add_logs(args, logger, 'G/IMGREC', g_imgrecs.avg, summary_step)
                 add_logs(args, logger, 'G/conrec', g_rec.avg, summary_step)
 
-                # add_logs(args, logger, 'C/OFFSET', moco_losses.avg, summary_step)
+                add_logs(args, logger, 'C/OFFSET', moco_losses.avg, summary_step)
 
                 print('Epoch: [{}/{}] [{}/{}] MODE[{}] Avg Loss: D[{d_losses.avg:.2f}] G[{g_losses.avg:.2f}] '.format(epoch + 1, args.epochs, i+1, args.iters,
                                                         training_mode, d_losses=d_losses, g_losses=g_losses))

@@ -99,7 +99,7 @@ parser.add_argument('--w_rec', default=0.1, type=float, help='Coefficient of Rec
 parser.add_argument('--w_adv', default=1.0, type=float, help='Coefficient of Adv. loss of G')
 parser.add_argument('--w_daku_adv', default=0.4, type=float, help='Coefficient of Adv. loss of G')
 parser.add_argument('--w_vec', default=0.01, type=float, help='Coefficient of Style vector rec. loss of G')
-# parser.add_argument('--w_off', default=0.5, type=float, help='Coefficient of offset normalization. loss of G')
+parser.add_argument('--w_off', default=0.5, type=float, help='Coefficient of offset normalization. loss of G')
 
 parser.add_argument('--use_stn', dest='use_stn', action="store_true", help="Use spatial transformer.")
 

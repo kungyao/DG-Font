@@ -1,7 +1,11 @@
+from typing import Any
+
 import torch
 import torch.nn.functional as F
-from torch import nn
 
+from torch import nn
+from torch.nn.modules.utils import _pair
+from torchvision.ops import DeformConv2d, deform_conv2d
 
 class ResBlocks(nn.Module):
     def __init__(self, num_blocks, dim, norm, act, pad_type, use_sn=False):
@@ -210,6 +214,37 @@ class AdaIN2d(nn.Module):
 
     def __repr__(self):
         return self.__class__.__name__ + '(num_features=' + str(self.num_features) + ')'
+
+
+class ModulatedDeformConvPack(DeformConv2d):
+    def __init__(self, *args, offset_channels=3, deformable_groups: int = 1, **kwargs):
+        super(ModulatedDeformConvPack, self).__init__(*args, **kwargs)
+
+        self.deformable_groups = deformable_groups
+
+        self.conv_offset = nn.Conv2d(
+            offset_channels,
+            self.deformable_groups * 3 * self.kernel_size[0] * self.kernel_size[1],
+            kernel_size=self.kernel_size,
+            stride=_pair(self.stride),
+            padding=_pair(self.padding),
+            dilation=_pair(self.dilation),
+            bias=True,
+        )
+
+        self.init_offset()
+
+    def init_offset(self):
+        self.conv_offset.weight.data.zero_()
+        self.conv_offset.bias.data.zero_()
+
+    def forward(self, x, m):
+        out = self.conv_offset(m)
+        o1, o2, mask = torch.chunk(out, 3, dim=1)
+        offset = torch.cat((o1, o2), dim=1)
+        mask = mask.sigmoid()
+        res = deform_conv2d(input=x, offset=offset, weight=self.weight, stride=_pair(self.stride), padding=_pair(self.padding), dilation=_pair(self.dilation), mask=mask)
+        return res, offset
 
 
 if __name__ == '__main__':

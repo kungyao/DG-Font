@@ -42,7 +42,7 @@ def my_validation(networks, content_loader, style_loader, args):
 
                     c_src, skip1, skip2 = G_EMA.cnt_encoder(x_src)
                     s_ref = C_EMA(x_ref_tmp, sty=True)
-                    x_res_ema_tmp = G_EMA.decode(c_src, s_ref, skip1, skip2)
+                    x_res_ema_tmp, _ = G_EMA.decode(c_src, s_ref, skip1, skip2)
 
                     x_res_ema_tmp = x_res_ema_tmp.cpu()
                     x_res_ema = torch.cat((x_res_ema, x_res_ema_tmp), 0)
