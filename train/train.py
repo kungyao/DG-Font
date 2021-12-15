@@ -102,87 +102,43 @@ def trainGAN(data_loader, networks, opts, epoch, args, additional):
                 # x_fake = G.decode(c_src, s_ref, skip1, skip2)
                 x_fake, _ = G.decode(c_src, s_ref, skip1, skip2)
 
-        if args.use_stn:
-            # x_style_ref.requires_grad_()
-            # rectify_x_style_ref.requires_grad_()
-            # Discriminator
-            # d_real_logit, _ = D(rectify_x_style_ref, y_ref)
-            d_real_logit, _ = D(x_ref, y_ref)
-            # d_real_style_logit, _ = D(x_style_ref, y_ref)
-            d_fake_logit, _ = D(x_fake.detach(), y_ref)
-            # Discriminator loss
-            d_adv_real = calc_adv_loss(d_real_logit, 'd_real') # + calc_adv_loss(d_real_style_logit, 'd_real')
-            d_adv_fake = calc_adv_loss(d_fake_logit, 'd_fake')
-            ######### Dakuten Discriminator
-            d_daku_real_logit, _ = D_DAKU(x_ref, y_daku_ref)
-            # d_daku_real_style_logit, _ = D_DAKU(x_style_ref, y_daku_ref)
-            d_daku_fake_logit, _ = D_DAKU(x_fake.detach(), jp_daku_class)
-            ######### Dakuten Discriminator loss
-            d_daku_adv_real = calc_adv_loss(d_daku_real_logit, 'd_real') # + calc_adv_loss(d_daku_real_style_logit, 'd_real')
-            d_daku_adv_fake = calc_adv_loss(d_daku_fake_logit, 'd_fake')
+        x_ref.requires_grad_()
+        # Discriminator
+        d_real_logit, _ = D(x_ref, y_ref)
+        d_fake_logit, _ = D(x_fake.detach(), y_ref)
+        # Discriminator loss
+        d_adv_real = calc_adv_loss(d_real_logit, 'd_real')
+        d_adv_fake = calc_adv_loss(d_fake_logit, 'd_fake')
+        ######### Dakuten Discriminator
+        d_daku_real_logit, _ = D_DAKU(x_ref, y_daku_ref)
+        d_daku_fake_logit, _ = D_DAKU(x_fake.detach(), jp_daku_class)
+        ######### Dakuten Discriminator loss
+        d_daku_adv_real = calc_adv_loss(d_daku_real_logit, 'd_real')
+        d_daku_adv_fake = calc_adv_loss(d_daku_fake_logit, 'd_fake')
+        #########
+        d_adv = d_adv_real + d_adv_fake
+        d_daku_adv = d_daku_adv_real + d_daku_adv_fake
 
-            #########
-            d_adv = d_adv_real + d_adv_fake
-            d_daku_adv = d_daku_adv_real + d_daku_adv_fake
+        d_gp = args.w_gp * compute_grad_gp(d_real_logit, x_ref, is_patch=False)
+        #########
+        d_daku_gp = args.w_gp * compute_grad_gp(d_daku_adv_real, x_ref, is_patch=False)
 
-            # d_gp = args.w_gp * compute_grad_gp(d_real_logit, rectify_x_style_ref, is_patch=False)
-            #########
-            # d_daku_gp = args.w_gp * compute_grad_gp(d_daku_real_style_logit, x_style_ref, is_patch=False)
-            d_loss = d_adv + d_daku_adv
+        d_loss = d_adv + d_daku_adv + d_gp + d_daku_gp
 
-            d_opt.zero_grad()
-            d_adv_real.backward(retain_graph=True)
-            # d_gp.backward()
-            d_adv_fake.backward()
-            if args.distributed:
-                average_gradients(D)
-            d_opt.step()
+        d_opt.zero_grad()
+        d_adv_real.backward(retain_graph=True)
+        d_gp.backward()
+        d_adv_fake.backward()
+        if args.distributed:
+            average_gradients(D)
+        d_opt.step()
 
-            #########
-            d_daku_opt.zero_grad()
-            d_daku_adv_real.backward(retain_graph=True)
-            # d_daku_gp.backward(retain_graph=True)
-            # d_daku_gp.backward()
-            d_daku_adv_fake.backward()
-            d_daku_opt.step()
-        else:
-            x_ref.requires_grad_()
-            d_real_logit, _ = D(x_ref, y_ref)
-            d_fake_logit, _ = D(x_fake.detach(), y_ref)
-
-            d_adv_real = calc_adv_loss(d_real_logit, 'd_real')
-            d_adv_fake = calc_adv_loss(d_fake_logit, 'd_fake')
-            #########
-            d_daku_real_logit, _ = D_DAKU(x_ref, y_daku_ref)
-            d_daku_fake_logit, _ = D_DAKU(x_fake.detach(), jp_daku_class)
-            #########
-            d_daku_adv_real = calc_adv_loss(d_daku_real_logit, 'd_real')
-            d_daku_adv_fake = calc_adv_loss(d_daku_fake_logit, 'd_fake')
-            #########
-            d_adv = d_adv_real + d_adv_fake
-            d_daku_adv = d_daku_adv_real + d_daku_adv_fake
-
-            d_gp = args.w_gp * compute_grad_gp(d_real_logit, x_ref, is_patch=False)
-            #########
-            d_daku_gp = args.w_gp * compute_grad_gp(d_daku_real_logit, x_ref, is_patch=False)
-
-            d_loss = d_adv + d_gp + d_daku_adv + d_daku_gp
-
-            d_opt.zero_grad()
-            d_adv_real.backward(retain_graph=True)
-            d_gp.backward()
-            d_adv_fake.backward()
-            if args.distributed:
-                average_gradients(D)
-            d_opt.step()
-
-            #########
-            d_daku_opt.zero_grad()
-            d_daku_adv_real.backward(retain_graph=True)
-            # d_daku_gp.backward(retain_graph=True)
-            d_daku_gp.backward()
-            d_daku_adv_fake.backward()
-            d_daku_opt.step()
+        #########
+        d_daku_opt.zero_grad()
+        d_daku_adv_real.backward(retain_graph=True)
+        d_daku_gp.backward()
+        d_daku_adv_fake.backward()
+        d_daku_opt.step()
 
         # Train G
         if args.use_stn:
@@ -243,7 +199,6 @@ def trainGAN(data_loader, networks, opts, epoch, args, additional):
         # END Train GANs #
         ##################
 
-
         if epoch >= args.ema_start:
             training_mode = training_mode + "_EMA"
             update_average(G_EMA, G)
@@ -256,8 +211,7 @@ def trainGAN(data_loader, networks, opts, epoch, args, additional):
                 d_losses.update(d_loss.item(), x_org.size(0))
                 d_advs.update(d_adv.item(), x_org.size(0))
                 d_daku_advs.update(d_daku_adv.item(), x_org.size(0))
-                if not args.use_stn:
-                    d_gps.update(d_gp.item(), x_org.size(0))
+                d_gps.update(d_gp.item(), x_org.size(0))
 
                 g_losses.update(g_loss.item(), x_org.size(0))
                 g_advs.update(g_adv.item(), x_org.size(0))
@@ -272,8 +226,7 @@ def trainGAN(data_loader, networks, opts, epoch, args, additional):
                 add_logs(args, logger, 'D/LOSS', d_losses.avg, summary_step)
                 add_logs(args, logger, 'D/ADV', d_advs.avg, summary_step)
                 add_logs(args, logger, 'D/ADV_DAKU', d_daku_advs.avg, summary_step)
-                if not args.use_stn:
-                    add_logs(args, logger, 'D/GP', d_gps.avg, summary_step)
+                add_logs(args, logger, 'D/GP', d_gps.avg, summary_step)
 
                 add_logs(args, logger, 'G/LOSS', g_losses.avg, summary_step)
                 add_logs(args, logger, 'G/ADV', g_advs.avg, summary_step)
