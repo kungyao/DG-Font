@@ -32,7 +32,7 @@ from tensorboardX import SummaryWriter
 # command
 ## train
 # python main.py --img_size 64 --data_path ../save_folder --epochs 10 --iters 1000 --output_k 146 --batch_size 32 --val_num 10 --val_batch 10
-# python main.py --img_size 64 --data_path ../save_folder --epochs 20 --iters 1000 --output_k 146 --batch_size 64 --val_num 10 --val_batch 10
+# python main.py --img_size 64 --data_path ../save_folder --epochs 20 --iters 1000 --output_k 146 --batch_size 64 --val_num 10 --val_batch 10 --use_stn
 # keep train
 # python main.py --img_size 64 --data_path ../save_folder --epochs 25 --iters 1000 --output_k 146 --batch_size 32 --val_num 10 --val_batch 10 --load_model GAN_20210906-162601
 ## test
@@ -104,7 +104,7 @@ parser.add_argument('--iid_mode', default='iid+', type=str, choices=['iid', 'iid
 parser.add_argument('--w_gp', default=10.0, type=float, help='Coefficient of GP of D')
 parser.add_argument('--w_rec', default=0.1, type=float, help='Coefficient of Rec. loss of G')
 parser.add_argument('--w_adv', default=1.0, type=float, help='Coefficient of Adv. loss of G')
-parser.add_argument('--w_daku_adv', default=0.4, type=float, help='Coefficient of Adv. loss of G')
+parser.add_argument('--w_daku_adv', default=1, type=float, help='Coefficient of Adv. loss of G')
 parser.add_argument('--w_vec', default=0.01, type=float, help='Coefficient of Style vector rec. loss of G')
 parser.add_argument('--w_off', default=0.5, type=float, help='Coefficient of offset normalization. loss of G')
 
@@ -286,7 +286,7 @@ def main_worker(gpu, ngpus_per_node, args):
 
         trainFunc(train_loader, networks, opts, epoch, args, {'logger': logger})
 
-        if epoch % 5 == 0 or epoch == args.epochs - 1:
+        if (epoch >= 10 and epoch % 5 == 0) or epoch == args.epochs - 1:
             validationFunc(val_loader, networks, epoch, args, {'logger': logger})
         
         # if (epoch + 1) % (args.epochs // 25) == 0:
