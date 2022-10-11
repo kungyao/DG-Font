@@ -48,12 +48,35 @@ data_dir = args.ttf_path
 data_root = pathlib.Path(data_dir)
 print(data_root)
 
+ignore_list = [
+    "A-OTF-ShinMGoMin-Emboss-2", 
+    "A-OTF-ShinMGoMin-Futoline-2", 
+    "A-OTF-ShinMGoMin-Line-2", 
+    "A-OTF-ShinMGoMin-Shadow-2", 
+    "HonobonoPop-Regular", 
+    "GN-Natsuiro_Schedule", 
+    "KFhimajiWAKU", 
+    "Pigmo-00", 
+    "Pigmo-01", 
+    "GNKana-Kiniro_SansSerif_ST", 
+    "KFhimajiSTITCH", 
+    "KouzanBrushFontSousyo", 
+    "KouzanGyousho", 
+    "KouzanMouhituFont", 
+    "RiBenQingLiuHengShanMaoBiZiTi-2", 
+    "kirin-Regular", 
+]
+
 def collect_font_path(extension):
     paths = []
     for ext in extension:
         tmp_paths = list(data_root.glob(f"*.{ext}*"))
         for path in tmp_paths:
-            paths.append(str(path))
+            path = str(path)
+            name = os.path.basename(path).split(".")[0]
+            if name in ignore_list:
+                continue
+            paths.append(path)
     return paths
 
 # all_image_paths = list(data_root.glob('*.ttf*'))
@@ -67,9 +90,8 @@ print(len(all_image_paths))
 # for i in range (len(all_image_paths)):
 #     print(all_image_paths[i])
 
-seq = list()
-
-for (label,item) in zip(range(len(all_image_paths)),all_image_paths):
+for (label,item) in zip(range(len(all_image_paths)), all_image_paths):
+    print(os.path.basename(item))
     src_font = ImageFont.truetype(item, size = args.chara_size)
     for (chara,cnt) in zip(characters, range(len(characters))):
         img = draw_example(chara, src_font, args.img_size, (args.img_size-args.chara_size)/2, (args.img_size-args.chara_size)/2)
